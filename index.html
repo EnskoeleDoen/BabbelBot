@@ -82,7 +82,7 @@
     <button id="send-button">Verstuur</button>
   </div>
 
-  <!-- Firebase App (the core Firebase SDK) -->
+  <!-- Firebase App (de core Firebase SDK) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
   <!-- Firebase Firestore -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js"></script>
@@ -149,7 +149,6 @@
         }
 
         const data = await response.json();
-        console.log("API antwoord:", data);  // Debugging: print de vertaalde tekst
         return data.translatedText;
       } catch (error) {
         console.error("Fout tijdens vertaling:", error);
@@ -162,19 +161,13 @@
       const text = messageInput.value.trim();
       if (text === "") return;
 
-      console.log("Bericht verzonden:", text);  // Debugging: print het bericht
-
       try {
         // Detecteer de taal van het bericht
         const detectedLang = /[a-z]/i.test(text) ? "en" : "nl";
         const targetLang = detectedLang === "en" ? "nl" : "en";
 
-        console.log("Gekeken taal:", detectedLang);  // Debugging: print de gedetecteerde taal
-        console.log("Doeltaal:", targetLang);  // Debugging: print de doeltaal
-
         // Vertaal de tekst
         const translatedText = await translateText(text, targetLang);
-        console.log("Vertaalde tekst:", translatedText);  // Debugging: print de vertaalde tekst
 
         // Sla het bericht op in Firestore
         await db.collection("messages").add({
@@ -183,16 +176,11 @@
           timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        console.log("Bericht toegevoegd aan Firestore");  // Debugging: bevestig succesvolle opslag
         messageInput.value = "";
       } catch (error) {
         console.error("Fout tijdens verzenden bericht:", error);
       }
     });
-
-    // Debugging: Controleer of Firebase goed is geladen
-    console.log("Firebase geconfigureerd:", firebase.apps.length);
-
   </script>
 </body>
 </html>
