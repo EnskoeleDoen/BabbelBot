@@ -82,10 +82,9 @@
     <button id="send-button">Verstuur</button>
   </div>
 
-  <!-- Firebase App (de core Firebase SDK) -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
-  <!-- Firebase Firestore -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js"></script>
+  <!-- Firebase 8 CDN (oude versie) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
   <script>
     // Firebase configuratie
@@ -99,7 +98,7 @@
     };
 
     // Firebase initialiseren
-    const app = firebase.initializeApp(firebaseConfig);
+    firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
     const chatContainer = document.getElementById("chat-container");
