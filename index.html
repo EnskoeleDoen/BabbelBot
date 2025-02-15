@@ -82,8 +82,9 @@
     <button id="send-button">Verstuur</button>
   </div>
 
-  <!-- Firebase SDK (V9+) -->
+  <!-- Firebase App (the core Firebase SDK) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
+  <!-- Firebase Firestore -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js"></script>
 
   <script>
@@ -97,7 +98,7 @@
       appId: "1:200411843976:web:768b8ad3204e4187367e3d"
     };
 
-    // Initialize Firebase
+    // Firebase initialiseren
     const app = firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
@@ -131,18 +132,29 @@
 
     // Functie om de tekst te vertalen met LibreTranslate
     async function translateText(text, targetLang) {
-      const response = await fetch("https://libretranslate.com/translate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          q: text,
-          source: "auto",
-          target: targetLang,
-          format: "text"
-        })
-      });
-      const data = await response.json();
-      return data.translatedText;
+      try {
+        const response = await fetch("https://libretranslate.com/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            q: text,
+            source: "auto",
+            target: targetLang,
+            format: "text"
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error("Vertaling API-fout: " + response.statusText);
+        }
+
+        const data = await response.json();
+        console.log("API antwoord:", data);  // Debugging: print de vertaalde tekst
+        return data.translatedText;
+      } catch (error) {
+        console.error("Fout tijdens vertaling:", error);
+        return text;  // Retourneer originele tekst als er een fout optreedt
+      }
     }
 
     // Verzendknop handler
@@ -150,22 +162,37 @@
       const text = messageInput.value.trim();
       if (text === "") return;
 
-      // Detecteer de taal van het bericht
-      const detectedLang = /[a-z]/i.test(text) ? "en" : "nl";
-      const targetLang = detectedLang === "en" ? "nl" : "en";
+      console.log("Bericht verzonden:", text);  // Debugging: print het bericht
 
-      // Vertaal de tekst
-      const translatedText = await translateText(text, targetLang);
+      try {
+        // Detecteer de taal van het bericht
+        const detectedLang = /[a-z]/i.test(text) ? "en" : "nl";
+        const targetLang = detectedLang === "en" ? "nl" : "en";
 
-      // Sla het bericht op in Firestore
-      db.collection("messages").add({
-        original: text,
-        translated: translatedText,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      });
+        console.log("Gekeken taal:", detectedLang);  // Debugging: print de gedetecteerde taal
+        console.log("Doeltaal:", targetLang);  // Debugging: print de doeltaal
 
-      messageInput.value = "";
+        // Vertaal de tekst
+        const translatedText = await translateText(text, targetLang);
+        console.log("Vertaalde tekst:", translatedText);  // Debugging: print de vertaalde tekst
+
+        // Sla het bericht op in Firestore
+        await db.collection("messages").add({
+          original: text,
+          translated: translatedText,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        console.log("Bericht toegevoegd aan Firestore");  // Debugging: bevestig succesvolle opslag
+        messageInput.value = "";
+      } catch (error) {
+        console.error("Fout tijdens verzenden bericht:", error);
+      }
     });
+
+    // Debugging: Controleer of Firebase goed is geladen
+    console.log("Firebase geconfigureerd:", firebase.apps.length);
+
   </script>
 </body>
 </html>
