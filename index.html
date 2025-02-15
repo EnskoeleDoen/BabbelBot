@@ -155,8 +155,8 @@
       }
     }
 
-    // Verzendknop handler
-    sendButton.addEventListener("click", async () => {
+    // Functie voor het verzenden van berichten
+    async function sendMessage() {
       const text = messageInput.value.trim();
       if (text === "") return;
 
@@ -178,6 +178,16 @@
         messageInput.value = "";
       } catch (error) {
         console.error("Fout tijdens verzenden bericht:", error);
+      }
+    }
+
+    // Verzendknop handler
+    sendButton.addEventListener("click", sendMessage);
+
+    // Verzend bericht met Enter-toets
+    messageInput.addEventListener("keydown", function(event) {
+      if (event.key === "Enter") {
+        sendMessage();
       }
     });
   </script>
