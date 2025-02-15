@@ -6,9 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {
-      background-color: #f0f0f0;
+      background-color: #f4f4f9;
       color: #333;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Arial', sans-serif;
       margin: 0;
       padding: 0;
       display: flex;
@@ -16,57 +16,62 @@
       height: 100vh;
     }
     header {
-      background-color: #4CAF50;
+      background-color: #6200ea;
+      color: #fff;
       padding: 15px;
       text-align: center;
-      color: white;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 24px;
     }
     #chat-container {
       flex: 1;
       padding: 20px;
       overflow-y: auto;
-      background-color: #fff;
     }
     .message {
-      background-color: #e0e0e0;
+      background-color: #fff;
+      border: 1px solid #ddd;
       padding: 10px;
       margin-bottom: 10px;
       border-radius: 5px;
-    }
-    .message p {
-      margin: 5px 0;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
     .original {
       font-weight: bold;
+      color: #6200ea;
     }
     .translated {
+      margin-top: 5px;
       font-style: italic;
       color: #555;
     }
     #input-container {
       display: flex;
       padding: 10px;
-      background-color: #ddd;
+      background-color: #fff;
+      border-top: 1px solid #ddd;
     }
     #message-input {
       flex: 1;
       padding: 10px;
-      border: 1px solid #ccc;
+      border: 1px solid #ddd;
       border-radius: 5px;
-      margin-right: 10px;
       font-size: 16px;
+      margin-right: 10px;
     }
     #send-button {
       padding: 10px 20px;
-      background-color: #4CAF50;
+      background-color: #6200ea;
       border: none;
       border-radius: 5px;
-      color: white;
+      color: #fff;
       font-size: 16px;
       cursor: pointer;
     }
     #send-button:hover {
-      background-color: #45a049;
+      background-color: #3700b3;
     }
   </style>
 </head>
@@ -81,9 +86,9 @@
   </div>
 
   <!-- Firebase SDK's -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
   <script>
     // Firebase configuratie
@@ -96,24 +101,24 @@
       appId: "1:200411843976:web:768b8ad3204e4187367e3d"
     };
 
-    // Firebase initialisatie
-    const app = firebase.initializeApp(firebaseConfig);
+    // Firebase initialiseren
+    firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // Firebase Authenticatie (anonieme login)
-    auth.signInAnonymously().catch((error) => {
+    // Eenvoudige authenticatie met anonieme login
+    auth.signInAnonymously().catch(error => {
       console.error("Authenticatiefout:", error);
     });
 
-    // Referentie naar de 'messages' collectie
+    // Referentie naar de berichtenverzameling
     const messagesRef = db.collection("messages");
 
-    // Luisteren naar nieuwe berichten
-    messagesRef.orderBy("timestamp").onSnapshot((snapshot) => {
+    // Luisteren naar nieuwe berichten en deze weergeven
+    messagesRef.orderBy("timestamp").onSnapshot(snapshot => {
       const chatContainer = document.getElementById("chat-container");
       chatContainer.innerHTML = "";
-      snapshot.forEach((doc) => {
+      snapshot.forEach(doc => {
         const data = doc.data();
         const messageDiv = document.createElement("div");
         messageDiv.classList.add("message");
@@ -134,13 +139,13 @@
     });
 
     // Bericht verzenden
-    document.getElementById("send-button").addEventListener("click", async () => {
+    document.getElementById("send-button").addEventListener("click", () => {
       const messageInput = document.getElementById("message-input");
       const text = messageInput.value.trim();
       if (text) {
-        await messagesRef.add({
+        messagesRef.add({
           original: text,
-          translated: "", // Dit wordt automatisch ingevuld door de extensie
+          translated: "", // De vertaling wordt later toegevoegd door de extensie
           timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
         messageInput.value = "";
