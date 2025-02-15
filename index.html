@@ -2,15 +2,77 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
-  <title>Chat met Vertaling</title>
+  <title>BabbelBot - Chat met Vertaling</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    /* Jouw bestaande CSS-styling hier */
+    body {
+      background-color: #f0f0f0;
+      color: #333;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      background-color: #4CAF50;
+      padding: 15px;
+      text-align: center;
+      color: white;
+    }
+    #chat-container {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      background-color: #fff;
+    }
+    .message {
+      background-color: #e0e0e0;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+    }
+    .message p {
+      margin: 5px 0;
+    }
+    .original {
+      font-weight: bold;
+    }
+    .translated {
+      font-style: italic;
+      color: #555;
+    }
+    #input-container {
+      display: flex;
+      padding: 10px;
+      background-color: #ddd;
+    }
+    #message-input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      margin-right: 10px;
+      font-size: 16px;
+    }
+    #send-button {
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      border: none;
+      border-radius: 5px;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #send-button:hover {
+      background-color: #45a049;
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>Chat met Vertaling</h1>
+    <h1>BabbelBot - Chat met Vertaling</h1>
   </header>
   <div id="chat-container"></div>
   <div id="input-container">
@@ -18,12 +80,13 @@
     <button id="send-button">Verstuur</button>
   </div>
 
-  <!-- Firebase compatibele bibliotheken -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <!-- Firebase SDK's -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js"></script>
 
   <script>
-    // Jouw Firebase-configuratie
+    // Firebase configuratie
     const firebaseConfig = {
       apiKey: "AIzaSyBgxzSZUSZ-npJ8b-qekUviOcJycYyqP2g",
       authDomain: "babbelbot-ba324.firebaseapp.com",
@@ -33,97 +96,61 @@
       appId: "1:200411843976:web:768b8ad3204e4187367e3d"
     };
 
-    // Firebase initialiseren
+    // Firebase initialisatie
     const app = firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore(app);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
 
-    const chatContainer = document.getElementById("chat-container");
-    const messageInput = document.getElementById("message-input");
-    const sendButton = document.getElementById("send-button");
-
-    // Luister naar nieuwe berichten in Firestore
-    db.collection("messages").orderBy("timestamp")
-      .onSnapshot(snapshot => {
-        chatContainer.innerHTML = "";
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          const messageDiv = document.createElement("div");
-          messageDiv.classList.add("message");
-
-          const originalP = document.createElement("p");
-          originalP.classList.add("original");
-          originalP.textContent = data.original;
-
-          const translatedP = document.createElement("p");
-          translatedP.classList.add("translated");
-          translatedP.textContent = data.translated;
-
-          messageDiv.appendChild(originalP);
-          messageDiv.appendChild(translatedP);
-          chatContainer.appendChild(messageDiv);
-        });
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-      });
-
-    // Functie voor taaldetectie met LibreTranslate
-    async function detectLanguage(text) {
-      const response = await fetch('https://libretranslate.com/detect', {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ q: text })
-      });
-      const data = await response.json();
-      if (data && data.length > 0) {
-        return data[0].language;
-      }
-      return null;
-    }
-
-    // Functie voor vertalen met LibreTranslate
-    async function translateText(text, source, target) {
-      const response = await fetch('https://libretranslate.com/translate', {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          q: text,
-          source: source,
-          target: target,
-          format: "text"
-        })
-      });
-      const data = await response.json();
-      if (data && data.translatedText) {
-        return data.translatedText;
-      }
-      return "";
-    }
-
-    // Handler voor het verzenden van berichten
-    sendButton.addEventListener("click", async () => {
-      const text = messageInput.value.trim();
-      if (text === "") return;
-
-      // Detecteer de taal van het bericht
-      const detectedLang = await detectLanguage(text);
-      let targetLang = detectedLang === "nl" ? "en" : "nl";
-
-      // Vertaal de tekst via LibreTranslate
-      const translatedText = await translateText(text, detectedLang, targetLang);
-
-      // Sla het bericht op in Firestore
-      db.collection("messages").add({
-        original: text,
-        translated: translatedText,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      });
-
-      messageInput.value = "";
+    // Firebase Authenticatie (anonieme login)
+    auth.signInAnonymously().catch((error) => {
+      console.error("Authenticatiefout:", error);
     });
 
-    // Verstuur bericht met de Enter-toets
-    messageInput.addEventListener("keyup", function(event) {
-      if (event.key === "Enter") {
-        sendButton.click();
+    // Referentie naar de 'messages' collectie
+    const messagesRef = db.collection("messages");
+
+    // Luisteren naar nieuwe berichten
+    messagesRef.orderBy("timestamp").onSnapshot((snapshot) => {
+      const chatContainer = document.getElementById("chat-container");
+      chatContainer.innerHTML = "";
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        const messageDiv = document.createElement("div");
+        messageDiv.classList.add("message");
+
+        const originalP = document.createElement("p");
+        originalP.classList.add("original");
+        originalP.textContent = `Origineel: ${data.original}`;
+
+        const translatedP = document.createElement("p");
+        translatedP.classList.add("translated");
+        translatedP.textContent = `Vertaald: ${data.translated}`;
+
+        messageDiv.appendChild(originalP);
+        messageDiv.appendChild(translatedP);
+        chatContainer.appendChild(messageDiv);
+      });
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    });
+
+    // Bericht verzenden
+    document.getElementById("send-button").addEventListener("click", async () => {
+      const messageInput = document.getElementById("message-input");
+      const text = messageInput.value.trim();
+      if (text) {
+        await messagesRef.add({
+          original: text,
+          translated: "", // Dit wordt automatisch ingevuld door de extensie
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        messageInput.value = "";
+      }
+    });
+
+    // Verzenden met Enter-toets
+    document.getElementById("message-input").addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        document.getElementById("send-button").click();
       }
     });
   </script>
