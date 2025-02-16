@@ -2,132 +2,88 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
-  <title>Chat met Yandex Vertaling</title>
+  <title>Woord-voor-Woord Vertaler</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { background-color: #f0f0f0; color: #333; font-family: Arial, sans-serif; margin: 0; padding: 0; }
-    header { background-color: #4CAF50; padding: 10px; text-align: center; }
-    header h1 { margin: 0; color: #fff; }
-    #chat-container { padding: 20px; height: calc(100vh - 140px); overflow-y: auto; }
-    .message { background-color: #fff; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
-    .original { font-weight: bold; }
-    .translated { margin-top: 5px; font-style: italic; color: #555; }
-    #input-container { position: fixed; bottom: 0; width: 100%; background-color: #fff; padding: 10px; display: flex; box-shadow: 0 -2px 5px rgba(0,0,0,0.1); }
-    #message-input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-right: 10px; font-size: 16px; }
-    #send-button { padding: 10px 20px; background-color: #4CAF50; border: none; border-radius: 5px; color: #fff; font-size: 16px; cursor: pointer; }
-    #send-button:hover { background-color: #45a049; }
+    body { background-color: #f0f0f0; font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+    .container { max-width: 800px; margin: 0 auto; }
+    textarea { width: 100%; height: 100px; margin: 10px 0; padding: 10px; }
+    button { padding: 10px 20px; background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+    #result { background-color: white; padding: 20px; margin-top: 20px; border-radius: 5px; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Chat met Vertaling</h1>
-  </header>
-  <div id="chat-container"></div>
-  <div id="input-container">
-    <input type="text" id="message-input" placeholder="Typ je bericht hier...">
-    <button id="send-button">Verstuur</button>
+  <div class="container">
+    <h1>Woord-voor-Woord Vertaler</h1>
+    <textarea id="input-text" placeholder="Voer tekst in..."></textarea>
+    <button onclick="translateText()">Vertaal</button>
+    <div id="result"></div>
   </div>
 
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-
   <script>
-    // Yandex API Configuratie
     const YANDEX_API_KEY = 'dict.1.1.20250216T001755Z.455d1d729116df67.40e7a15977e5f2af09739febb90fda890af3140b';
-    const YANDEX_TRANSLATE_URL = 'https://dictionary.yandex.net/api/v1/dicservice.json/lookup';
+    const API_URL = 'https://dictionary.yandex.net/api/v1/dicservice.json/lookup';
 
-    // Firebase Configuratie
-    const firebaseConfig = {
-      apiKey: "AIzaSyBgxzSZUSZ-npJ8b-qekUviOcJycYyqP2g",
-      authDomain: "babbelbot-ba324.firebaseapp.com",
-      projectId: "babbelbot-ba324",
-      storageBucket: "babbelbot-ba324.appspot.com",
-      messagingSenderId: "200411843976",
-      appId: "1:200411843976:web:768b8ad3204e4187367e3d"
-    };
-
-    // Firebase Initialisatie
-    let db;
-    try {
-      firebase.initializeApp(firebaseConfig);
-      db = firebase.firestore();
-    } catch (error) {
-      console.error("Firebase fout:", error);
-      alert("Databaseverbinding mislukt!");
+    // Zin opsplitsen in woorden
+    function splitSentence(sentence) {
+      return sentence
+        .replace(/[.,\/#!$%^&*;:{}=\-_`~()]/g, '')
+        .split(/\s+/)
+        .filter(word => word.length > 0);
     }
 
-    // UI Elementen
-    const chatContainer = document.getElementById("chat-container");
-    const messageInput = document.getElementById("message-input");
-    const sendButton = document.getElementById("send-button");
-
-    // Firestore Listener
-    if (db) {
-      db.collection("messages").orderBy("timestamp").onSnapshot(
-        snapshot => {
-          chatContainer.innerHTML = "";
-          snapshot.forEach(doc => {
-            const data = doc.data();
-            const messageDiv = document.createElement("div");
-            messageDiv.className = "message";
-            messageDiv.innerHTML = `
-              <p class="original">${data.original}</p>
-              <p class="translated">${data.translated}</p>
-            `;
-            chatContainer.appendChild(messageDiv);
-          });
-          chatContainer.scrollTop = chatContainer.scrollHeight;
-        },
-        error => console.error("Firestore fout:", error)
-      );
-    }
-
-    // Yandex Vertaalfunctie
-    async function translateText(text) {
+    // Enkel woord vertalen
+    async function translateWord(word, sourceLang = 'nl', targetLang = 'en') {
       try {
         const params = new URLSearchParams({
           key: YANDEX_API_KEY,
-          lang: 'en-nl', // Standaard Engels -> Nederlands
-          text: text,
-          ui: 'nl' // Interface taal
+          lang: `${sourceLang}-${targetLang}`,
+          text: word,
+          ui: 'nl'
         });
 
-        const response = await fetch(`${YANDEX_TRANSLATE_URL}?${params}`);
-        if (!response.ok) throw new Error("Vertaling mislukt");
+        const response = await fetch(`${API_URL}?${params}`);
+        if (!response.ok) throw new Error('API-fout');
         
         const data = await response.json();
-        return data.def[0]?.tr[0]?.text || text;
+        return data.def[0]?.tr[0]?.text || word;
+
       } catch (error) {
-        console.error("Vertalingsfout:", error);
-        return text;
+        console.error(`Fout bij vertalen van '${word}':`, error);
+        return word;
       }
     }
 
-    // Bericht Verzenden
-    async function sendMessage() {
-      const text = messageInput.value.trim();
-      if (!text) return;
+    // Volledige tekst verwerken
+    async function translateText() {
+      const input = document.getElementById('input-text').value.trim();
+      if (!input) return;
+
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = 'Bezig met vertalen...';
 
       try {
-        const translated = await translateText(text);
+        // Opsplitsen in woorden
+        const words = splitSentence(input);
         
-        if (db) {
-          await db.collection("messages").add({
-            original: text,
-            translated: translated,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-          });
-        }
-        messageInput.value = "";
+        // Alle woorden parallel vertalen
+        const translations = await Promise.all(
+          words.map(word => translateWord(word))
+        );
+
+        // Woorden samenvoegen
+        const translatedSentence = translations.join(' ');
+
+        // Resultaat tonen
+        resultDiv.innerHTML = `
+          <strong>Origineel:</strong> ${input}<br>
+          <strong>Vertaling:</strong> ${translatedSentence}
+        `;
+
       } catch (error) {
-        console.error("Verzendfout:", error);
-        alert(`Fout: ${error.message}`);
+        resultDiv.innerHTML = `Fout: ${error.message}`;
       }
     }
-
-    // Event Listeners
-    sendButton.addEventListener("click", sendMessage);
-    messageInput.addEventListener("keydown", e => e.key === "Enter" && sendMessage());
   </script>
 </body>
 </html>
