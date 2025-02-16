@@ -2,10 +2,9 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
-  <title>Chat met Vertaling</title>
+  <title>Chat met Yandex Vertaling</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    /* CSS blijft hetzelfde */
     body { background-color: #f0f0f0; color: #333; font-family: Arial, sans-serif; margin: 0; padding: 0; }
     header { background-color: #4CAF50; padding: 10px; text-align: center; }
     header h1 { margin: 0; color: #fff; }
@@ -33,7 +32,11 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
   <script>
-    // Firebase configuratie
+    // Yandex API Configuratie
+    const YANDEX_API_KEY = 'dict.1.1.20250216T001755Z.455d1d729116df67.40e7a15977e5f2af09739febb90fda890af3140b';
+    const YANDEX_TRANSLATE_URL = 'https://dictionary.yandex.net/api/v1/dicservice.json/lookup';
+
+    // Firebase Configuratie
     const firebaseConfig = {
       apiKey: "AIzaSyBgxzSZUSZ-npJ8b-qekUviOcJycYyqP2g",
       authDomain: "babbelbot-ba324.firebaseapp.com",
@@ -43,22 +46,22 @@
       appId: "1:200411843976:web:768b8ad3204e4187367e3d"
     };
 
-    // Firebase initialisatie met error handling
+    // Firebase Initialisatie
     let db;
     try {
       firebase.initializeApp(firebaseConfig);
       db = firebase.firestore();
     } catch (error) {
-      console.error("Firebase initialisatie fout:", error);
-      alert("Database verbinding mislukt!");
+      console.error("Firebase fout:", error);
+      alert("Databaseverbinding mislukt!");
     }
 
-    // UI elementen
+    // UI Elementen
     const chatContainer = document.getElementById("chat-container");
     const messageInput = document.getElementById("message-input");
     const sendButton = document.getElementById("send-button");
 
-    // Firestore listener
+    // Firestore Listener
     if (db) {
       db.collection("messages").orderBy("timestamp").onSnapshot(
         snapshot => {
@@ -75,74 +78,39 @@
           });
           chatContainer.scrollTop = chatContainer.scrollHeight;
         },
-        error => console.error("Firestore error:", error)
+        error => console.error("Firestore fout:", error)
       );
     }
 
-    // Verbeterde vertaalfunctie
-    async function translateText(text, sourceLang, targetLang) {
+    // Yandex Vertaalfunctie
+    async function translateText(text) {
       try {
-        const response = await fetch("https://libretranslate.com/translate", {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-          },
-          body: JSON.stringify({
-            q: text.substring(0, 500),
-            source: sourceLang,
-            target: targetLang,
-            format: "text",
-            api_key: ""
-          })
+        const params = new URLSearchParams({
+          key: YANDEX_API_KEY,
+          lang: 'en-nl', // Standaard Engels -> Nederlands
+          text: text,
+          ui: 'nl' // Interface taal
         });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(`Vertaling mislukt: ${errorData.error || 'Onbekende fout'}`);
-        }
-
-        return (await response.json()).translatedText;
+        const response = await fetch(`${YANDEX_TRANSLATE_URL}?${params}`);
+        if (!response.ok) throw new Error("Vertaling mislukt");
+        
+        const data = await response.json();
+        return data.def[0]?.tr[0]?.text || text;
       } catch (error) {
-        console.error("Vertaling mislukt:", error);
-        return "[Vertaling mislukt] " + text;
+        console.error("Vertalingsfout:", error);
+        return text;
       }
     }
 
-    // Verbeterde verzendfunctie met taaldetectie
+    // Bericht Verzenden
     async function sendMessage() {
       const text = messageInput.value.trim();
       if (!text) return;
 
       try {
-        // Input validatie
-        if (text.length > 500) throw new Error("Maximaal 500 tekens");
-
-        // Taaldetectie met CORS proxy
-        const detectResponse = await fetch("https://libretranslate.com/detect", {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-          },
-          body: JSON.stringify({ q: text })
-        });
-
-        if (!detectResponse.ok) {
-          const errorBody = await detectResponse.text();
-          throw new Error(`Taaldetectie mislukt (${detectResponse.status}): ${errorBody}`);
-        }
-
-        const detectResult = await detectResponse.json();
-        if (!detectResult?.length) throw new Error("Geen taal gedetecteerd");
-
-        const sourceLang = detectResult[0].language || 'en';
-        const targetLang = sourceLang === 'en' ? 'nl' : 'en';
-
-        // Vertaling uitvoeren
-        const translated = await translateText(text, sourceLang, targetLang);
-
-        // Bericht opslaan
+        const translated = await translateText(text);
+        
         if (db) {
           await db.collection("messages").add({
             original: text,
@@ -150,7 +118,6 @@
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
           });
         }
-
         messageInput.value = "";
       } catch (error) {
         console.error("Verzendfout:", error);
@@ -158,7 +125,7 @@
       }
     }
 
-    // Event listeners
+    // Event Listeners
     sendButton.addEventListener("click", sendMessage);
     messageInput.addEventListener("keydown", e => e.key === "Enter" && sendMessage());
   </script>
